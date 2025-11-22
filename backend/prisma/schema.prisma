@@ -1,0 +1,91 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== MODÈLE USER =====
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+
+  // Attributs ABAC (String au lieu d'enum pour SQLite)
+  role      String   @default("INTERN") // INTERN, SECURITY_ANALYST, SECURITY_MANAGER, DEPARTMENT_HEAD
+  department String  @default("cybersecurity")
+
+  // Attributs environnement
+  authorizedIPs String? // JSON string array
+  deviceId      String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ownedResources Resource[] @relation("ResourceOwner")
+  auditLogs      AuditLog[]
+}
+
+// ===== MODÈLE RESOURCE =====
+model Resource {
+  id        String   @id @default(uuid())
+  name      String
+
+  // Attributs ABAC (String au lieu d'enum pour SQLite)
+  ownerId         String
+  owner           User   @relation("ResourceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  sensitivityLevel String // PUBLIC, INTERNAL, CONFIDENTIAL, SECRET
+  dataType        String // DOCUMENT, CODE, CONFIGURATION, CREDENTIALS
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  auditLogs AuditLog[]
+}
+
+// ===== MODÈLE AUDIT LOG =====
+model AuditLog {
+  id         String   @id @default(uuid())
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  resourceId String?
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  action     String   // "read", "write", "delete"
+  allowed    Boolean
+
+  // Contexte
+  ipAddress  String?
+  deviceId   String?
+
+  timestamp  DateTime @default(now())
+
+  @@index([userId])
+  @@index([resourceId])
+  @@index([timestamp])
+}
+
+// ===== MODÈLE VULNERABILITY SCAN =====
+model VulnerabilityScan {
+  id          String   @id @default(uuid())
+
+  targetSystem String
+
+  // Compteurs par niveau
+  critical    Int      @default(0)
+  high        Int      @default(0)
+  medium      Int      @default(0)
+  low         Int      @default(0)
+
+  scanDate    DateTime @default(now())
+
+  @@index([scanDate])
+}

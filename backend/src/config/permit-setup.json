@@ -1,0 +1,93 @@
+{
+  "resources": [
+    {
+      "key": "resource",
+      "name": "Resource",
+      "description": "Ressources sécurisées de l'application",
+      "actions": {
+        "read": { "name": "Lire", "description": "Voir les ressources" },
+        "write": { "name": "Écrire", "description": "Créer et modifier les ressources" },
+        "delete": { "name": "Supprimer", "description": "Supprimer les ressources" }
+      },
+      "attributes": {
+        "sensitivity_level": {
+          "type": "string",
+          "description": "Niveau de sensibilité (PUBLIC, INTERNAL, CONFIDENTIAL, SECRET)"
+        },
+        "data_type": {
+          "type": "string",
+          "description": "Type de données (DOCUMENT, CODE, CONFIGURATION, CREDENTIALS)"
+        }
+      }
+    }
+  ],
+  "roles": [
+    {
+      "key": "INTERN",
+      "name": "Stagiaire",
+      "description": "Accès en lecture seule",
+      "permissions": ["resource:read"]
+    },
+    {
+      "key": "SECURITY_ANALYST",
+      "name": "Analyste Sécurité",
+      "description": "Lecture et écriture",
+      "permissions": ["resource:read", "resource:write"]
+    },
+    {
+      "key": "SECURITY_MANAGER",
+      "name": "Manager Sécurité",
+      "description": "Lecture et écriture",
+      "permissions": ["resource:read", "resource:write"]
+    },
+    {
+      "key": "DEPARTMENT_HEAD",
+      "name": "Chef de Département",
+      "description": "Tous les droits",
+      "permissions": ["resource:read", "resource:write", "resource:delete"]
+    }
+  ],
+  "user_attributes": {
+    "department": {
+      "type": "string",
+      "description": "Département de l'utilisateur"
+    },
+    "authorized_ips": {
+      "type": "array",
+      "description": "Liste des IPs autorisées pour cet utilisateur"
+    },
+    "current_hour": {
+      "type": "number",
+      "description": "Heure actuelle pour le contrôle d'accès"
+    },
+    "current_day": {
+      "type": "string",
+      "description": "Jour actuel pour le contrôle d'accès"
+    }
+  },
+  "condition_sets": [
+    {
+      "key": "working_hours",
+      "name": "Heures de travail",
+      "description": "Accès uniquement pendant les heures de bureau (8h-18h, lundi-vendredi)",
+      "conditions": {
+        "allOf": [
+          { "environment.current_hour": { "greater-than": 7 } },
+          { "environment.current_hour": { "less-than": 19 } },
+          { "environment.current_day": { "in": ["monday", "tuesday", "wednesday", "thursday", "friday"] } }
+        ]
+      }
+    },
+    {
+      "key": "ip_whitelist",
+      "name": "IP Autorisée",
+      "description": "Accès uniquement depuis les IPs autorisées de l'utilisateur",
+      "conditions": {
+        "allOf": [
+          { "subject.authorized_ips": { "contains": "environment.ip_address" } }
+        ]
+      }
+    }
+  ],
+  "default_tenant": "default"
+}
